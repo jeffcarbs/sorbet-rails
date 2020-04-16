@@ -56,14 +56,26 @@ class ActiveRecord::Base
   sig { returns(T.attached_class) }
   def self.last!; end
 
-  sig { params(attributes: T.untyped, block: T.untyped).returns(T.attached_class) }
+  sig { params(attributes: T.untyped, block: T.nilable(T.proc.params(object: T.attached_class).void)).returns(T.attached_class) }
+  def self.new(attributes = nil, &block); end
+
+  sig { params(attributes: T.untyped, block: T.nilable(T.proc.params(object: T.attached_class).void)).returns(T.attached_class) }
+  def self.build(attributes = nil, &block); end
+
+  sig { params(attributes: T.untyped, block: T.nilable(T.proc.params(object: T.attached_class).void)).returns(T.attached_class) }
   def self.create(attributes = nil, &block); end
 
-  sig { params(attributes: T.untyped, block: T.untyped).returns(T.attached_class) }
+  sig { params(attributes: T.untyped, block: T.nilable(T.proc.params(object: T.attached_class).void)).returns(T.attached_class) }
   def self.create!(attributes = nil, &block); end
 
-  sig { params(attributes: T.untyped, block: T.untyped).returns(T.attached_class) }
-  def self.new(attributes = nil, &block); end
+  sig { params(attributes: T.untyped, block: T.nilable(T.proc.params(object: T.attached_class).void)).returns(T.attached_class) }
+  def self.first_or_create(attributes = nil, &block); end
+
+  sig { params(attributes: T.untyped, block: T.nilable(T.proc.params(object: T.attached_class).void)).returns(T.attached_class) }
+  def self.first_or_create!(attributes = nil, &block); end
+
+  sig { params(attributes: T.untyped, block: T.nilable(T.proc.params(object: T.attached_class).void)).returns(T.attached_class) }
+  def self.first_or_initialize(attributes = nil, &block); end
 
   sig do
     override.params(
@@ -75,4 +87,63 @@ class ActiveRecord::Base
     ).returns(T::Array[T.attached_class])
   end
   def self.find_each(start: nil, finish: nil, batch_size: 1000, error_on_ignore: nil, &block); end
+
+  sig do
+    override.params(
+      start: T.nilable(Integer),
+      finish: T.nilable(Integer),
+      batch_size: T.nilable(Integer),
+      error_on_ignore: T.nilable(T::Boolean),
+      block: T.nilable(T.proc.params(e: T::Array[T.attached_class]).void)
+    ).returns(T::Array[T::Array[T.attached_class]])
+  end
+  def self.find_in_batches(start: nil, finish: nil, batch_size: 1000, error_on_ignore: nil, &block); end
+
+  sig { returns(T::Array[T.attached_class]) }
+  def self.destroy_all; end
+
+  sig { params(args: T.untyped).returns(T::Array[T.untyped]) }
+  def ids(*args); end
+
+  sig { params(args: T.untyped).returns(T::Array[T.untyped]) }
+  def pluck(*args); end
+
+  sig { params(conditions: T.untyped).returns(T::Boolean) }
+  def exists?(conditions = nil); end
+
+  sig { returns(T::Boolean) }
+  def any?; end
+
+  sig { returns(T::Boolean) }
+  def many?; end
+
+  sig { returns(T::Boolean) }
+  def none?; end
+
+  sig { returns(T::Boolean) }
+  def one?; end
+
+  sig { params(args: T.untyped).returns(Numeric) }
+  def average(*args); end
+
+  sig { params(args: T.untyped).returns(Numeric) }
+  def calculate(*args); end
+
+  sig { params(args: T.untyped).returns(Numeric) }
+  def count(*args); end
+
+  sig { params(args: T.untyped).returns(Numeric) }
+  def maximum(*args); end
+
+  sig { params(args: T.untyped).returns(Numeric) }
+  def minimum(*args); end
+
+  sig { params(args: T.untyped).returns(Numeric) }
+  def sum(*args); end
+
+  sig { params(updates: T.untyped).returns(Integer) }
+  def update_all(updates); end
+
+  sig { returns(Integer) }
+  def delete_all; end
 end

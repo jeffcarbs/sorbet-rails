@@ -18,7 +18,8 @@ class SorbetRails::ActiveRecordRbiFormatter
     ])
 
     parlour.root.create_class('ActiveRecord::Base') do |class_rbi|
-      create_finder_methods(class_rbi, type: 'T.attached_class', class_method: true)
+      create_elem_specific_common_methods(class_rbi, type: 'T.attached_class', class_method: true)
+      create_general_common_methods(class_rbi)
     end
 
     parlour.rbi
@@ -41,7 +42,7 @@ class SorbetRails::ActiveRecordRbiFormatter
         value: "type_member(fixed: T.untyped)",
       )
 
-      create_finder_methods(class_rbi, type: 'Elem', class_method: false)
+      create_elem_specific_common_methods(class_rbi, type: 'Elem', class_method: false)
 
       class_rbi.create_method(
         "each",
@@ -69,16 +70,32 @@ class SorbetRails::ActiveRecordRbiFormatter
         return_type: "T::Array[T.type_parameter(:U)]",
       )
 
-      class_rbi.create_method(
-        "exists?",
-        parameters: [ Parameter.new("conditions", type: "T.untyped", default: "nil") ],
-        return_type: "T::Boolean",
-      )
-      class_rbi.create_method('any?', return_type: "T::Boolean")
       class_rbi.create_method('empty?', return_type: "T::Boolean")
-      class_rbi.create_method('many?', return_type: "T::Boolean")
-      class_rbi.create_method('none?', return_type: "T::Boolean")
-      class_rbi.create_method('one?', return_type: "T::Boolean")
+
+      create_general_common_methods(class_rbi)
+    end
+
+    parlour.root.create_class("ActiveRecord::AssociationRelation", superclass: "ActiveRecord::Relation") do |class_rbi|
+      class_rbi.create_constant(
+        "Elem",
+        value: "type_member(fixed: T.untyped)",
+      )
+    end
+
+    parlour.root.create_class("ActiveRecord::Associations::CollectionProxy", superclass: "ActiveRecord::Relation") do |class_rbi|
+      class_rbi.create_constant(
+        "Elem",
+        value: "type_member(fixed: T.untyped)",
+      )
+
+      push_methods = %w(<< append push concat)
+      push_methods.each do |push_method|
+        class_rbi.create_method(
+          push_method,
+          parameters: [ Parameter.new("*records", type: "T.any(Elem, T::Enumerable[Elem])") ],
+          return_type: "T.self_type",
+        )
+      end
     end
 
     parlour.rbi
@@ -91,7 +108,7 @@ class SorbetRails::ActiveRecordRbiFormatter
       class_method: T::Boolean,
     ).void
   }
-  def create_finder_methods(class_rbi, type:, class_method:)
+  def create_elem_specific_common_methods(class_rbi, type:, class_method:)
     finder_methods = %w(find find_by find_by!)
     finder_methods.each do |finder_method|
       class_rbi.create_method(
@@ -127,19 +144,15 @@ class SorbetRails::ActiveRecordRbiFormatter
       )
     end
 
-    build_methods = %w(create create! new)
+    build_methods = %w(new build create create! first_or_create first_or_create! first_or_initialize)
     build_methods.each do |build_method|
-      # This should be defined on both but trying to keep the diff small in this commit
-      next unless class_method
-
       class_rbi.create_method(
         build_method,
         parameters: [
           Parameter.new("attributes", type: "T.untyped", default: 'nil'),
           Parameter.new(
             "&block",
-            type: "T.untyped",
-            # type: "T.nilable(T.proc.params(object: #{type}).void)",
+            type: "T.nilable(T.proc.params(object: #{type}).void)",
           ),
         ],
         return_type: type,
@@ -147,8 +160,7 @@ class SorbetRails::ActiveRecordRbiFormatter
       )
     end
 
-    # batch_methods = %w(find_each find_in_batches)
-    batch_methods = %w(find_each)
+    batch_methods = %w(find_each find_in_batches)
     batch_methods.each do |batch_method|
       inner_type = batch_method == 'find_each' ? type : "T::Array[#{type}]"
 
@@ -166,5 +178,51 @@ class SorbetRails::ActiveRecordRbiFormatter
         override: true,
       )
     end
+
+    class_rbi.create_method(
+      "destroy_all",
+      return_type: "T::Array[#{type}]",
+      class_method: class_method,
+    )
+  end
+
+  sig {params(class_rbi: Parlour::RbiGenerator::Namespace).void}
+  def create_general_common_methods(class_rbi)
+    class_rbi.create_method(
+      "ids",
+      parameters: [ Parameter.new("*args", type: "T.untyped") ],
+      return_type: "T::Array[T.untyped]",
+    )
+    class_rbi.create_method(
+      "pluck",
+      parameters: [ Parameter.new("*args", type: "T.untyped") ],
+      return_type: "T::Array[T.untyped]",
+    )
+    class_rbi.create_method(
+      "exists?",
+      parameters: [ Parameter.new("conditions", type: "T.untyped", default: "nil") ],
+      return_type: "T::Boolean",
+    )
+
+    boolean_methods = %w(any? many? none? one?)
+    boolean_methods.each do |boolean_method|
+      class_rbi.create_method(boolean_method, return_type: "T::Boolean")
+    end
+
+    math_methods = %w(average calculate count maximum minimum sum)
+    math_methods.map do |math_method|
+      class_rbi.create_method(
+        math_method,
+        parameters: [ Parameter.new("*args", type: "T.untyped") ],
+        return_type: "Numeric",
+      )
+    end
+
+    class_rbi.create_method(
+      "update_all",
+      parameters: [ Parameter.new("updates", type: "T.untyped") ],
+      return_type: "Integer",
+    )
+    class_rbi.create_method("delete_all", return_type: "Integer")
   end
 end
