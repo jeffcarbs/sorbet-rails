@@ -57,6 +57,9 @@ namespace :rails_rbi do
 
     file_path = Rails.root.join("sorbet", "rails-rbi", "active_record_relation.rbi")
     File.write(file_path, formatter.generate_active_record_relation_rbi)
+
+    file_path = Rails.root.join("sorbet", "rails-rbi", "active_record_batches_batch_enumerator.rbi")
+    File.write(file_path, formatter.generate_active_record_batches_batch_enumerator_rbi)
   end
 
   desc "Generate rbis for rails models. Pass models name to regenerate rbi for only the given models."
